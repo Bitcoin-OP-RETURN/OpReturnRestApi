@@ -44,14 +44,17 @@ freq_analysis_schema = FrequencyAnalysisSchema(many=True)
 
 
 @app.route('/frequency-analysis', methods=['GET'])
-def get_frequency_analysis():
-    all_days = FrequencyAnalysis.query.all()
-    return freq_analysis_schema.jsonify(all_days)
-
-
-@app.route('/frequency-analysis/<min_date>:<max_date>', methods=['GET'])
-def get_frequency_analysis_in_range(min_date, max_date):
-    days = FrequencyAnalysis.query.filter(FrequencyAnalysis.dataday.between(min_date, max_date))
+def get_test():
+    min_date = request.args.get('min_date')
+    max_date = request.args.get('max_date')
+    if min_date is None and max_date is None:
+        days = FrequencyAnalysis.query.all()
+    elif min_date is None:
+        days = FrequencyAnalysis.query.filter(FrequencyAnalysis.dataday <= max_date)
+    elif max_date is None:
+        days = FrequencyAnalysis.query.filter(FrequencyAnalysis.dataday >= min_date)
+    else:
+        days = FrequencyAnalysis.query.filter(FrequencyAnalysis.dataday.between(min_date, max_date))
     return freq_analysis_schema.jsonify(days)
 
 
