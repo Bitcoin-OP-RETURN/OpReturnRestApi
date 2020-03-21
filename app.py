@@ -40,11 +40,30 @@ class FrequencyAnalysisSchema(ma.Schema):
         fields = ('id', 'dataday', 'nulldata', 'p2pk', 'p2pkh', 'p2ms', 'p2sh', 'unknowntype')
 
 
+class SizeAnalysis(db.Model):
+    __tablename__ = 'sizeanalysis'
+    id = db.Column(db.BigInteger, primary_key=True, nullable=False)
+    dataday = db.Column(db.Date, nullable=False)
+    avgsize = db.Column(db.Integer, nullable=False)
+    outputs = db.Column(db.Integer, nullable=False)
+
+    def __init__(self, dataday, avgsize, outputs):
+        self.dataday = dataday
+        self.avgsize = avgsize
+        self.outputs = outputs
+
+
+class SizeAnalysisSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'dataday', 'avgsize', 'outputs')
+
+
 freq_analysis_schema = FrequencyAnalysisSchema(many=True)
+size_analysis_schema = SizeAnalysisSchema(many=True)
 
 
 @app.route('/frequency-analysis', methods=['GET'])
-def get_test():
+def get_frequency_analysis():
     min_date = request.args.get('min_date')
     max_date = request.args.get('max_date')
     if min_date is None and max_date is None:
@@ -58,5 +77,20 @@ def get_test():
     return freq_analysis_schema.jsonify(days)
 
 
+@app.route('/size-analysis', methods=['GET'])
+def get_size_analysis():
+    min_date = request.args.get('min_date')
+    max_date = request.args.get('max_date')
+    if min_date is None and max_date is None:
+        days = SizeAnalysis.query.all()
+    elif min_date is None:
+        days = SizeAnalysis.query.filter(SizeAnalysis.dataday <= max_date)
+    elif max_date is None:
+        days = SizeAnalysis.query.filter(SizeAnalysis.dataday >= min_date)
+    else:
+        days = SizeAnalysis.query.filter(SizeAnalysis.dataday.between(min_date, max_date))
+    return size_analysis_schema.jsonify(days)
+
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False, host='0.0.0.0')

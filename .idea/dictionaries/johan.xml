@@ -2,6 +2,7 @@
   <dictionary name="johan">
     <words>
       <w>asctime</w>
+      <w>avgsize</w>
       <w>dataday</w>
       <w>frequencyanalysis</w>
       <w>levelname</w>
@@ -9,6 +10,7 @@
       <w>postgresql</w>
       <w>rpcpassword</w>
       <w>rpcuser</w>
+      <w>sizeanalysis</w>
       <w>sqlalchemy</w>
       <w>tablename</w>
       <w>unknowntype</w>
