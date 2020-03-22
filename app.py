@@ -238,7 +238,7 @@ def get_tx_outputs():
     return tx_outputs_schema.jsonify(tx_outputs)
 
 
-@app.route('/tx-outputs-search', methods=['GET'])
+@app.route('/tx-outputs/search', methods=['GET'])
 def get_tx_outputs_search():
     search_term = request.args.get('search')
     search_format = request.args.get('format')
