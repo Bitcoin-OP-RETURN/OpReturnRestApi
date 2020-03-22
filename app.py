@@ -279,6 +279,19 @@ def get_tx_output_by_hash():
     return tx_output_schema.jsonify(tx)
 
 
+@app.route('/tx-outputs/blockhash', methods=['GET'])
+def get_tx_outputs_by_blockhash():
+    blockhash = request.args.get('hash')
+
+    if blockhash is None:
+        abort(400, 'Provide a block hash')
+    elif len(blockhash) != 64:
+        abort(400, 'Provide a valid block hash')
+    else:
+        txs = TransactionOutputs.query.filter(TransactionOutputs.blockhash == blockhash).all()
+    return tx_outputs_schema.jsonify(txs)
+
+
 # https://github.com/pallets/flask-sqlalchemy/issues/518#issuecomment-322379524
 def limited_paginate(query_in, page=None, per_page=None, error_out=True, total_in=None):
     """Returns ``per_page`` items from page ``page``.
