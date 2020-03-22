@@ -1,6 +1,6 @@
 import config as cfg
-from flask import Flask, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, request, jsonify, Response
+from flask_sqlalchemy import SQLAlchemy, Pagination, abort
 from flask_marshmallow import Marshmallow
 
 # Initialize app
@@ -12,6 +12,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 # Initialize marshmallow
 ma = Marshmallow(app)
+
+PAGE_SIZE = 50
+TOTAL_IN = 100_000_000_000
 
 
 class FrequencyAnalysis(db.Model):
@@ -139,9 +142,40 @@ class ProtocolAnalysisSchema(ma.Schema):
                   'universityofnicosia', 'unknownprotocol', 'veriblock')
 
 
+class TransactionOutputs(db.Model):
+    __tablename__ = 'transactionoutputs'
+    id = db.Column(db.BigInteger, primary_key=True, nullable=False)
+    txhash = db.Column(db.CHAR(64), nullable=False)
+    blocktime = db.Column(db.BigInteger, nullable=False)
+    blockhash = db.Column(db.CHAR(64), nullable=False)
+    outvalue = db.Column(db.Float, nullable=False)
+    outtype = db.Column(db.VARCHAR, nullable=False)
+    outasm = db.Column(db.VARCHAR, nullable=False)
+    outhex = db.Column(db.VARCHAR, nullable=False)
+    protocol = db.Column(db.VARCHAR, nullable=True)
+    fileheader = db.Column(db.VARCHAR, nullable=True)
+
+    def __init__(self, txhash, blocktime, blockhash, outvalue, outtype, outasm, outhex, protocol, fileheader):
+        self.txhash = txhash
+        self.blocktime = blocktime
+        self.blockhash = blockhash
+        self.outvalue = outvalue
+        self.outtype = outtype
+        self.outasm = outasm
+        self.outhex = outhex
+        self.protocol = protocol
+        self.fileheader = fileheader
+
+
+class TransactionOutputsSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'txhash', 'blocktime', 'blockhash', 'outvalue', 'outtype', 'outasm', 'outhex', 'protocol', 'fileheader')
+
+
 freq_analysis_schema = FrequencyAnalysisSchema(many=True)
 size_analysis_schema = SizeAnalysisSchema(many=True)
 prot_analysis_schema = ProtocolAnalysisSchema(many=True)
+tx_outputs_schema = TransactionOutputsSchema(many=True)
 
 
 @app.route('/frequency-analysis', methods=['GET'])
@@ -189,5 +223,108 @@ def get_protocol_analysis():
     return prot_analysis_schema.jsonify(days)
 
 
+@app.route('/tx-outputs', methods=['GET'])
+def get_tx_outputs():
+    page = request.args.get('page')
+    if page is None:
+        tx_outputs = TransactionOutputs.query.order_by(TransactionOutputs.id.desc()).limit(PAGE_SIZE).all()
+    else:
+        result = limited_paginate(TransactionOutputs.query.order_by(TransactionOutputs.id.desc()), int(page), PAGE_SIZE, error_out=True, total_in=TOTAL_IN)
+        tx_outputs = tx_outputs_schema.dump(result.items)
+    return tx_outputs_schema.jsonify(tx_outputs)
+
+
+@app.route('/tx-outputs/time', methods=['GET'])
+def get_tx_outputs_by_time():
+    min_time = request.args.get('min_time')
+    max_time = request.args.get('max_time')
+    page = request.args.get('page')
+
+    if min_time is not None and int(min_time) < 1230768000:
+        abort(400, 'Time can not be before 2009')
+    if max_time is not None and int(min_time) < 1230768000:
+        abort(400, 'Time can not be before 2009')
+
+    if min_time is None and max_time is None:
+        abort(400, 'Provide the parameters min_time or max_time')
+        return
+    elif min_time is None:
+        if page is None:
+            txs = TransactionOutputs.query.filter(TransactionOutputs.blocktime <= max_time).order_by(TransactionOutputs.id).limit(PAGE_SIZE)
+        else:
+            txs = tx_outputs_schema.dump(limited_paginate(TransactionOutputs.query.filter(TransactionOutputs.blocktime <= max_time).order_by(TransactionOutputs.id), int(page), PAGE_SIZE, error_out=True, total_in=TOTAL_IN).items)
+    elif max_time is None:
+        if page is None:
+            txs = TransactionOutputs.query.filter(TransactionOutputs.blocktime >= min_time).order_by(TransactionOutputs.id).limit(PAGE_SIZE)
+        else:
+            txs = tx_outputs_schema.dump(limited_paginate(TransactionOutputs.query.filter(TransactionOutputs.blocktime >= min_time).order_by(TransactionOutputs.id), int(page), PAGE_SIZE, error_out=True, total_in=TOTAL_IN).items)
+    else:
+        if page is None:
+            txs = TransactionOutputs.query.filter(TransactionOutputs.blocktime.between(min_time, max_time)).order_by(TransactionOutputs.id).limit(PAGE_SIZE)
+        else:
+            txs = tx_outputs_schema.dump(limited_paginate(TransactionOutputs.query.filter(TransactionOutputs.blocktime.between(min_time, max_time)).order_by(TransactionOutputs.id), int(page), PAGE_SIZE, error_out=True, total_in=TOTAL_IN).items)
+    return tx_outputs_schema.jsonify(txs)
+
+
+# https://github.com/pallets/flask-sqlalchemy/issues/518#issuecomment-322379524
+def limited_paginate(query_in, page=None, per_page=None, error_out=True, total_in=None):
+    """Returns ``per_page`` items from page ``page``.
+    If no items are found and ``page`` is greater than 1, or if page is
+    less than 1, it aborts with 404.
+    This behavior can be disabled by passing ``error_out=False``.
+    If ``page`` or ``per_page`` are ``None``, they will be retrieved from
+    the request query.
+    If the values are not ints and ``error_out`` is ``True``, it aborts
+    with 404.
+    If there is no request or they aren't in the query, they default to 1
+    and 20 respectively.
+    Returns a :class:`Pagination` object.
+    """
+
+    if request:
+        if page is None:
+            try:
+                page = int(request.args.get('page', 1))
+            except (TypeError, ValueError):
+                if error_out:
+                    abort(404)
+
+                page = 1
+
+        if per_page is None:
+            try:
+                per_page = int(request.args.get('per_page', PAGE_SIZE))
+            except (TypeError, ValueError):
+                if error_out:
+                    abort(404)
+
+                per_page = PAGE_SIZE
+    else:
+        if page is None:
+            page = 1
+
+        if per_page is None:
+            per_page = PAGE_SIZE
+
+    if error_out and page < 1:
+        abort(404)
+
+    items = query_in.limit(per_page).offset((page - 1) * per_page).all()
+
+    if not items and page != 1 and error_out:
+        abort(404)
+
+    # No need to count if we're on the first page and there are fewer
+    # items than we expected.
+    if page == 1 and len(items) < per_page:
+        total = len(items)
+    elif total_in:
+        total = total_in
+    else:
+        total = query_in.order_by(None).count()
+
+    return Pagination(query_in, page, per_page, total, items)
+
+
 if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0')
+    app.run(debug=True, host='0.0.0.0')

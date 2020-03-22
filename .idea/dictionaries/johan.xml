@@ -5,8 +5,10 @@
       <w>avgsize</w>
       <w>bitproof</w>
       <w>blockaibindedpixsy</w>
+      <w>blockhash</w>
       <w>blocksign</w>
       <w>blockstoreblockstack</w>
+      <w>blocktime</w>
       <w>chainpoint</w>
       <w>coinspark</w>
       <w>colu</w>
@@ -17,6 +19,7 @@
       <w>emptytx</w>
       <w>eternitywall</w>
       <w>factom</w>
+      <w>fileheader</w>
       <w>frequencyanalysis</w>
       <w>lapreuve</w>
       <w>levelname</w>
@@ -26,9 +29,14 @@
       <w>openassets</w>
       <w>openchain</w>
       <w>originalmy</w>
+      <w>outasm</w>
+      <w>outhex</w>
+      <w>outtype</w>
+      <w>outvalue</w>
       <w>postgresql</w>
       <w>proofofexistence</w>
       <w>prot</w>
+      <w>protocolanalysis</w>
       <w>provebit</w>
       <w>remembr</w>
       <w>rpcpassword</w>
@@ -39,6 +47,8 @@
       <w>stampd</w>
       <w>stampery</w>
       <w>tablename</w>
+      <w>transactionoutputs</w>
+      <w>txhash</w>
       <w>universityofnicosia</w>
       <w>unknownprotocol</w>
       <w>unknowntype</w>
