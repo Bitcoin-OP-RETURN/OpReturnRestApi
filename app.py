@@ -176,6 +176,7 @@ freq_analysis_schema = FrequencyAnalysisSchema(many=True)
 size_analysis_schema = SizeAnalysisSchema(many=True)
 prot_analysis_schema = ProtocolAnalysisSchema(many=True)
 tx_outputs_schema = TransactionOutputsSchema(many=True)
+tx_output_schema = TransactionOutputsSchema(many=False)
 
 
 @app.route('/frequency-analysis', methods=['GET'])
@@ -247,7 +248,6 @@ def get_tx_outputs_by_time():
 
     if min_time is None and max_time is None:
         abort(400, 'Provide the parameters min_time or max_time')
-        return
     elif min_time is None:
         if page is None:
             txs = TransactionOutputs.query.filter(TransactionOutputs.blocktime <= max_time).order_by(TransactionOutputs.id).limit(PAGE_SIZE)
@@ -264,6 +264,19 @@ def get_tx_outputs_by_time():
         else:
             txs = tx_outputs_schema.dump(limited_paginate(TransactionOutputs.query.filter(TransactionOutputs.blocktime.between(min_time, max_time)).order_by(TransactionOutputs.id), int(page), PAGE_SIZE, error_out=True, total_in=TOTAL_IN).items)
     return tx_outputs_schema.jsonify(txs)
+
+
+@app.route('/tx-outputs/txhash', methods=['GET'])
+def get_tx_output_by_hash():
+    txhash = request.args.get('hash')
+
+    if txhash is None:
+        abort(400, 'Provide a transaction hash')
+    elif len(txhash) != 64:
+        abort(400, 'Provide a valid transaction hash')
+    else:
+        tx = TransactionOutputs.query.filter(TransactionOutputs.txhash == txhash).first()
+    return tx_output_schema.jsonify(tx)
 
 
 # https://github.com/pallets/flask-sqlalchemy/issues/518#issuecomment-322379524
