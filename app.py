@@ -1,6 +1,9 @@
+from binascii import hexlify
 import config as cfg
 from flask import Flask, request, jsonify, Response
 from flask_sqlalchemy import SQLAlchemy, Pagination, abort
+from sqlalchemy import and_, or_
+import sqlalchemy
 from flask_marshmallow import Marshmallow
 
 # Initialize app
@@ -235,34 +238,26 @@ def get_tx_outputs():
     return tx_outputs_schema.jsonify(tx_outputs)
 
 
-@app.route('/tx-outputs/time', methods=['GET'])
-def get_tx_outputs_by_time():
+@app.route('/tx-outputs-search', methods=['GET'])
+def get_tx_outputs_search():
+    search_term = request.args.get('search')
+    search_format = request.args.get('format')
     min_time = request.args.get('min_time')
     max_time = request.args.get('max_time')
+    protocol = request.args.get('protocol')
+    fileheader = request.args.get('fileheader')
+    sort = request.args.get('sort')
     page = request.args.get('page')
 
-    if min_time is not None and int(min_time) < 1230768000:
-        abort(400, 'Time can not be before 2009')
-    if max_time is not None and int(min_time) < 1230768000:
-        abort(400, 'Time can not be before 2009')
+    txs = tx_outputs_schema.dump(limited_paginate(
+        TransactionOutputs.query.filter(and_(
+            TransactionOutputs.blocktime >= min_time if min_time is not None and int(min_time) >= 1230768000 else sqlalchemy.true() if min_time is None else abort(400, 'Time can not be before 2009'),
+            TransactionOutputs.blocktime <= max_time if max_time is not None and (int(max_time) > int(min_time) if min_time is not None else True) else sqlalchemy.true() if max_time is None else abort(400, 'max_time has to be larger than min_time'),
+            TransactionOutputs.protocol == protocol if protocol is not None else sqlalchemy.true(),
+            TransactionOutputs.fileheader == fileheader if fileheader is not None else sqlalchemy.true(),
+            sqlalchemy.true() if search_term is None else abort(400, 'Search term must be at least 3 characters long') if len(search_term) < 3 else TransactionOutputs.outhex.like('%{}%'.format(search_term)) if search_format is None else TransactionOutputs.outhex.like('%{}%'.format(encoded_to_hex(search_term))) if search_format == 'encoded' else TransactionOutputs.outhex.like('%{}%'.format(search_term) if search_format == 'hex' else abort(400, 'Invalid search format (use hex or encoded)'))
+        )).order_by(TransactionOutputs.id if sort is None else TransactionOutputs.id.desc() if sort == 'desc' else TransactionOutputs.id), int(page) if page is not None else 1, PAGE_SIZE, error_out=True, total_in=TOTAL_IN).items)
 
-    if min_time is None and max_time is None:
-        abort(400, 'Provide the parameters min_time or max_time')
-    elif min_time is None:
-        if page is None:
-            txs = TransactionOutputs.query.filter(TransactionOutputs.blocktime <= max_time).order_by(TransactionOutputs.id).limit(PAGE_SIZE)
-        else:
-            txs = tx_outputs_schema.dump(limited_paginate(TransactionOutputs.query.filter(TransactionOutputs.blocktime <= max_time).order_by(TransactionOutputs.id), int(page), PAGE_SIZE, error_out=True, total_in=TOTAL_IN).items)
-    elif max_time is None:
-        if page is None:
-            txs = TransactionOutputs.query.filter(TransactionOutputs.blocktime >= min_time).order_by(TransactionOutputs.id).limit(PAGE_SIZE)
-        else:
-            txs = tx_outputs_schema.dump(limited_paginate(TransactionOutputs.query.filter(TransactionOutputs.blocktime >= min_time).order_by(TransactionOutputs.id), int(page), PAGE_SIZE, error_out=True, total_in=TOTAL_IN).items)
-    else:
-        if page is None:
-            txs = TransactionOutputs.query.filter(TransactionOutputs.blocktime.between(min_time, max_time)).order_by(TransactionOutputs.id).limit(PAGE_SIZE)
-        else:
-            txs = tx_outputs_schema.dump(limited_paginate(TransactionOutputs.query.filter(TransactionOutputs.blocktime.between(min_time, max_time)).order_by(TransactionOutputs.id), int(page), PAGE_SIZE, error_out=True, total_in=TOTAL_IN).items)
     return tx_outputs_schema.jsonify(txs)
 
 
@@ -350,6 +345,11 @@ def limited_paginate(query_in, page=None, per_page=None, error_out=True, total_i
         total = query_in.order_by(None).count()
 
     return Pagination(query_in, page, per_page, total, items)
+
+
+def encoded_to_hex(input_string):
+    hex_string = hexlify(input_string.encode())
+    return hex_string.decode()
 
 
 if __name__ == '__main__':
