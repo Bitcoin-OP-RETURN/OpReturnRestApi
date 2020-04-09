@@ -5,11 +5,12 @@ from flask_sqlalchemy import SQLAlchemy, Pagination, abort
 from sqlalchemy import and_, or_
 import sqlalchemy
 from flask_marshmallow import Marshmallow
+import pyodbc
 
 # Initialize app
 app = Flask(__name__)
 # Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://' + cfg.db['username'] + ':' + cfg.db['password'] + '@' + cfg.db['server'] + ':' + cfg.db['port'] + '/' + cfg.db['database']
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mssql+pyodbc://' + cfg.db['username'] + ':' + cfg.db['password'] + '@' + cfg.db['server'] + '/' + cfg.db['database'] + '?driver=ODBC+DRIVER+17+for+SQL+Server'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Initialize database
 db = SQLAlchemy(app)
@@ -353,4 +354,4 @@ def encoded_to_hex(input_string):
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=False, host='0.0.0.0')
