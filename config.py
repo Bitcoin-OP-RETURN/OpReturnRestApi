@@ -7,7 +7,7 @@ rpc = {
 db = {
     'server': 'localhost',
     'database': 'bitcoin',
-    'username': 'postgres',
+    'username': 'SA',
     'password': '',
-    'port': '5432'
+    'port': '1433'
 }

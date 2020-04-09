@@ -10,7 +10,7 @@ import pyodbc
 # Initialize app
 app = Flask(__name__)
 # Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mssql+pyodbc://' + cfg.db['username'] + ':' + cfg.db['password'] + '@' + cfg.db['server'] + '/' + cfg.db['database'] + '?driver=ODBC+DRIVER+17+for+SQL+Server'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mssql+pyodbc://' + cfg.db['username'] + ':' + cfg.db['password'] + '@' + cfg.db['server'] + ':' + cfg.db['port'] + '/' + cfg.db['database'] + '?driver=ODBC+DRIVER+17+for+SQL+Server'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Initialize database
 db = SQLAlchemy(app)
