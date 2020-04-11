@@ -17,7 +17,7 @@ db = SQLAlchemy(app)
 # Initialize marshmallow
 ma = Marshmallow(app)
 
-PAGE_SIZE = 50
+PAGE_SIZE = 10
 TOTAL_IN = 100_000_000_000
 
 
