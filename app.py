@@ -268,26 +268,36 @@ def get_tx_outputs_search():
 @app.route('/tx-outputs/txhash', methods=['GET'])
 def get_tx_output_by_hash():
     txhash = request.args.get('hash')
+    page = request.args.get('page')
 
     if txhash is None:
         abort(400, 'Provide a transaction hash')
     elif len(txhash) != 64:
         abort(400, 'Provide a valid transaction hash')
     else:
-        tx = TransactionOutputs.query.filter(TransactionOutputs.txhash == txhash).first()
-    return tx_output_schema.jsonify(tx)
+        if page is None:
+            txs = TransactionOutputs.query.filter(TransactionOutputs.txhash == txhash).order_by(TransactionOutputs.id.asc()).limit(PAGE_SIZE).all()
+        else:
+            txs = tx_outputs_schema.dump(limited_paginate(
+                TransactionOutputs.query.filter(TransactionOutputs.txhash == txhash).order_by(TransactionOutputs.id.asc()), int(page), PAGE_SIZE, error_out=True, total_in=TOTAL_IN).items)
+    return tx_outputs_schema.jsonify(txs)
 
 
 @app.route('/tx-outputs/blockhash', methods=['GET'])
 def get_tx_outputs_by_blockhash():
     blockhash = request.args.get('hash')
+    page = request.args.get('page')
 
     if blockhash is None:
         abort(400, 'Provide a block hash')
     elif len(blockhash) != 64:
         abort(400, 'Provide a valid block hash')
     else:
-        txs = TransactionOutputs.query.filter(TransactionOutputs.blockhash == blockhash).all()
+        if page is None:
+            txs = TransactionOutputs.query.filter(TransactionOutputs.blockhash == blockhash).order_by(TransactionOutputs.id.asc()).limit(PAGE_SIZE).all()
+        else:
+            txs = tx_outputs_schema.dump(limited_paginate(
+                TransactionOutputs.query.filter(TransactionOutputs.blockhash == blockhash).order_by(TransactionOutputs.id.asc()), int(page), PAGE_SIZE, error_out=True, total_in=TOTAL_IN).items)
     return tx_outputs_schema.jsonify(txs)
 
 
