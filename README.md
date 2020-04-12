@@ -23,7 +23,7 @@ Retrieves the latest transaction outputs.
 **Authentication required:** No
 
 **Optional Parameters:**
-* `page`: page in search results. Default page size is 50.
+* `page`: page in search results. Default page size is 10.
     * Example: `1`
 
 **Success Code:** `200 OK`
@@ -77,7 +77,7 @@ Retrieves transaction outputs based on search parameters.
     * Example: `png`
 * `sort`: sort the results by the primary key (ascending by default)
     * Format: `desc`
-* `page`: page in search results. Default page size is 50.
+* `page`: page in search results. Default page size is 10.
     * Example: `1`
 
 **Success Code:** `200 OK`
@@ -112,24 +112,28 @@ Retrieves transaction outputs based on search parameters.
 **Required Parameters:**
 * `hash`: transaction hash
     * Example: `7269250bdca88935639b2d04e2948f17cce0a79ae8626eff0bc84859915eddd8`
+* `page`: page in search results. Default page size is 10.
+    * Example: `1`
 
 **Success Code:** `200 OK`
 
 **Content example:**
 
 ```json
-{
-  "blockhash": "0000000000000000000ba0fad6ab30a88b393cc265c49e077000c0cac24962ca",
-  "blocktime": 1584834040,
-  "fileheader": "",
-  "id": 46928414,
-  "outasm": "OP_RETURN 000f1f1000029782de2858f3937b64997510e50aef08555a0b74b4402102f4fbae3e4387bf8d199709918501ee50f16aa448b4945e76a5e00704dde1d3add631032bd571504526035ab1e48b5b5dd229",
-  "outhex": "6a4c50000f1f1000029782de2858f3937b64997510e50aef08555a0b74b4402102f4fbae3e4387bf8d199709918501ee50f16aa448b4945e76a5e00704dde1d3add631032bd571504526035ab1e48b5b5dd229",
-  "outtype": "nulldata",
-  "outvalue": 0.0,
-  "protocol": "veriblock",
-  "txhash": "7269250bdca88935639b2d04e2948f17cce0a79ae8626eff0bc84859915eddd8"
-}
+[
+    {
+      "blockhash": "0000000000000000000ba0fad6ab30a88b393cc265c49e077000c0cac24962ca",
+      "blocktime": 1584834040,
+      "fileheader": "",
+      "id": 46928414,
+      "outasm": "OP_RETURN 000f1f1000029782de2858f3937b64997510e50aef08555a0b74b4402102f4fbae3e4387bf8d199709918501ee50f16aa448b4945e76a5e00704dde1d3add631032bd571504526035ab1e48b5b5dd229",
+      "outhex": "6a4c50000f1f1000029782de2858f3937b64997510e50aef08555a0b74b4402102f4fbae3e4387bf8d199709918501ee50f16aa448b4945e76a5e00704dde1d3add631032bd571504526035ab1e48b5b5dd229",
+      "outtype": "nulldata",
+      "outvalue": 0.0,
+      "protocol": "veriblock",
+      "txhash": "7269250bdca88935639b2d04e2948f17cce0a79ae8626eff0bc84859915eddd8"
+    }
+]
 ```
 
 ## Transaction Outputs by Block
@@ -143,6 +147,8 @@ Retrieves transaction outputs based on search parameters.
 **Required Parameters:**
 * `hash`: block hash
     * Example: `0000000000000000000ba0fad6ab30a88b393cc265c49e077000c0cac24962ca`
+* `page`: page in search results. Default page size is 10.
+    * Example: `1`
 
 **Success Code:** `200 OK`
 

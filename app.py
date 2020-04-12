@@ -5,18 +5,19 @@ from flask_sqlalchemy import SQLAlchemy, Pagination, abort
 from sqlalchemy import and_, or_
 import sqlalchemy
 from flask_marshmallow import Marshmallow
+import pyodbc
 
 # Initialize app
 app = Flask(__name__)
 # Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://' + cfg.db['username'] + ':' + cfg.db['password'] + '@' + cfg.db['server'] + ':' + cfg.db['port'] + '/' + cfg.db['database']
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mssql+pyodbc://' + cfg.db['username'] + ':' + cfg.db['password'] + '@' + cfg.db['server'] + ':' + cfg.db['port'] + '/' + cfg.db['database'] + '?driver=ODBC+DRIVER+17+for+SQL+Server'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Initialize database
 db = SQLAlchemy(app)
 # Initialize marshmallow
 ma = Marshmallow(app)
 
-PAGE_SIZE = 50
+PAGE_SIZE = 10
 TOTAL_IN = 100_000_000_000
 
 
@@ -249,12 +250,15 @@ def get_tx_outputs_search():
     sort = request.args.get('sort')
     page = request.args.get('page')
 
+    protocols = [x.strip() for x in protocol.split(',')] if protocol is not None else None
+    fileheaders = [x.strip() for x in fileheader.split(',')] if fileheader is not None else None
+
     txs = tx_outputs_schema.dump(limited_paginate(
         TransactionOutputs.query.filter(and_(
             TransactionOutputs.blocktime >= min_time if min_time is not None and int(min_time) >= 1230768000 else sqlalchemy.true() if min_time is None else abort(400, 'Time can not be before 2009'),
             TransactionOutputs.blocktime <= max_time if max_time is not None and (int(max_time) > int(min_time) if min_time is not None else True) else sqlalchemy.true() if max_time is None else abort(400, 'max_time has to be larger than min_time'),
-            TransactionOutputs.protocol == protocol if protocol is not None else sqlalchemy.true(),
-            TransactionOutputs.fileheader == fileheader if fileheader is not None else sqlalchemy.true(),
+            or_(TransactionOutputs.protocol == prot for prot in protocols) if protocols is not None else sqlalchemy.true(),
+            or_(TransactionOutputs.fileheader == fh for fh in fileheaders) if fileheaders is not None else sqlalchemy.true(),
             sqlalchemy.true() if search_term is None else abort(400, 'Search term must be at least 3 characters long') if len(search_term) < 3 else TransactionOutputs.outhex.like('%{}%'.format(search_term)) if search_format is None else TransactionOutputs.outhex.like('%{}%'.format(encoded_to_hex(search_term))) if search_format == 'encoded' else TransactionOutputs.outhex.like('%{}%'.format(search_term) if search_format == 'hex' else abort(400, 'Invalid search format (use hex or encoded)'))
         )).order_by(TransactionOutputs.id if sort is None else TransactionOutputs.id.desc() if sort == 'desc' else TransactionOutputs.id), int(page) if page is not None else 1, PAGE_SIZE, error_out=True, total_in=TOTAL_IN).items)
 
@@ -264,26 +268,36 @@ def get_tx_outputs_search():
 @app.route('/tx-outputs/txhash', methods=['GET'])
 def get_tx_output_by_hash():
     txhash = request.args.get('hash')
+    page = request.args.get('page')
 
     if txhash is None:
         abort(400, 'Provide a transaction hash')
     elif len(txhash) != 64:
         abort(400, 'Provide a valid transaction hash')
     else:
-        tx = TransactionOutputs.query.filter(TransactionOutputs.txhash == txhash).first()
-    return tx_output_schema.jsonify(tx)
+        if page is None:
+            txs = TransactionOutputs.query.filter(TransactionOutputs.txhash == txhash).order_by(TransactionOutputs.id.asc()).limit(PAGE_SIZE).all()
+        else:
+            txs = tx_outputs_schema.dump(limited_paginate(
+                TransactionOutputs.query.filter(TransactionOutputs.txhash == txhash).order_by(TransactionOutputs.id.asc()), int(page), PAGE_SIZE, error_out=True, total_in=TOTAL_IN).items)
+    return tx_outputs_schema.jsonify(txs)
 
 
 @app.route('/tx-outputs/blockhash', methods=['GET'])
 def get_tx_outputs_by_blockhash():
     blockhash = request.args.get('hash')
+    page = request.args.get('page')
 
     if blockhash is None:
         abort(400, 'Provide a block hash')
     elif len(blockhash) != 64:
         abort(400, 'Provide a valid block hash')
     else:
-        txs = TransactionOutputs.query.filter(TransactionOutputs.blockhash == blockhash).all()
+        if page is None:
+            txs = TransactionOutputs.query.filter(TransactionOutputs.blockhash == blockhash).order_by(TransactionOutputs.id.asc()).limit(PAGE_SIZE).all()
+        else:
+            txs = tx_outputs_schema.dump(limited_paginate(
+                TransactionOutputs.query.filter(TransactionOutputs.blockhash == blockhash).order_by(TransactionOutputs.id.asc()), int(page), PAGE_SIZE, error_out=True, total_in=TOTAL_IN).items)
     return tx_outputs_schema.jsonify(txs)
 
 
@@ -353,4 +367,4 @@ def encoded_to_hex(input_string):
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=False, host='0.0.0.0')
