@@ -155,8 +155,7 @@ app = Flask(__name__)
 app.json_encoder = MyJSONEncoder
 
 database = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=' + cfg.db['server'] + ';DATABASE=' +
-                          cfg.db['database'] + ';UID=' + cfg.db['username'] + ';PWD=' + cfg.db['password'] +
-                          ';Trusted_Connection=Yes', autocommit=True)
+                          cfg.db['database'] + ';UID=' + cfg.db['username'] + ';PWD=' + cfg.db['password'], autocommit=True)
 database.setencoding(encoding='utf-8')
 cursor = database.cursor()
 
