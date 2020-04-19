@@ -227,9 +227,11 @@ def get_protocol_analysis():
     return jsonify(data)
 
 
-@app.route('/test', methods=['GET'])
-def get_test():
-    cursor.execute("SELECT TOP(10) * FROM transactionoutputs where outhex like '%74657374%' order by id desc")
+@app.route('/tx-outputs', methods=['GET'])
+def get_tx_outputs():
+    page = request.args.get('page')
+    query = "SELECT * FROM transactionoutputs ORDER BY id DESC OFFSET {0} ROWS FETCH NEXT 10 ROWS ONLY;".format(int(page) * 10 if page is not None else 0)
+    cursor.execute(query)
     rows = cursor.fetchall()
     data = []
     for row in rows:
