@@ -239,6 +239,73 @@ def get_tx_outputs():
     return jsonify(data)
 
 
+@app.route('/tx-outputs/search', methods=['GET'])
+def get_tx_outputs_search():
+    search_term = request.args.get('search')
+    search_format = request.args.get('format')
+    min_time = request.args.get('min_time')
+    max_time = request.args.get('max_time')
+    protocol = request.args.get('protocol')
+    fileheader = request.args.get('fileheader')
+    sort = request.args.get('sort')
+    page = request.args.get('page')
+
+    protocols = [x.strip() for x in protocol.split(',')] if protocol is not None else None
+    fileheaders = [x.strip() for x in fileheader.split(',')] if fileheader is not None else None
+
+    query = "SELECT * FROM transactionoutputs"
+    if search_term is not None or min_time is not None or max_time is not None or protocol is not None or fileheader is not None:
+        query += " WHERE"
+        added_at_least_one = False
+        if min_time is not None and int(min_time) >= 1230768000:
+            if added_at_least_one:
+                query += " AND"
+            else:
+                added_at_least_one = True
+            query += " blocktime >= {0}".format(min_time)
+
+        if max_time is not None:
+            if added_at_least_one:
+                query += " AND"
+            else:
+                added_at_least_one = True
+            query += " blocktime <= {0}".format(max_time)
+
+        if protocol is not None:
+            if added_at_least_one:
+                query += " AND"
+            else:
+                added_at_least_one = True
+            query += " ("
+            for i, prot in enumerate(protocols):
+                if i > 0:
+                    query += " or "
+                query += "protocol = '{0}'".format(prot)
+            query += ")"
+
+        if fileheader is not None:
+            if added_at_least_one:
+                query += " AND"
+            else:
+                added_at_least_one = True
+            query += " ("
+            for i, fh in enumerate(fileheaders):
+                if i > 0:
+                    query += " or "
+                query += "fileheader = '{0}'".format(fh)
+            query += ")"
+
+    query += " ORDER BY id {0}".format(sort if sort is not None else "ASC")
+    query += " OFFSET " + str((int(page) - 1) * 10 if page is not None else 0) + " ROWS FETCH NEXT 10 ROWS ONLY;"
+
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    data = []
+    for row in rows:
+        data.append(TxOutput(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9]))
+    return jsonify(data)
+
+
 def encoded_to_hex(input_string):
     hex_string = hexlify(input_string.encode())
     return hex_string.decode()
