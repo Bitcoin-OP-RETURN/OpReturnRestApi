@@ -109,14 +109,14 @@ class MyJSONEncoder(JSONEncoder):
         elif isinstance(obj, SizeAnalysis):
             return {
                 'id': obj.internal_id,
-                'dataday': obj.dataday,
+                'dataday': str(obj.dataday),
                 'avgsize': obj.avgsize,
                 'outputs': obj.outputs
             }
         elif isinstance(obj, ProtocolAnalysis):
             return {
                 'id': obj.internal_id,
-                'dataday': obj.dataday,
+                'dataday': str(obj.dataday),
                 'ascribe': obj.ascribe,
                 'bitproof': obj.bitproof,
                 'blockaibindedpixsy': obj.blockaibindedpixsy,
@@ -180,6 +180,50 @@ def get_frequency_analysis():
     data = []
     for row in rows:
         data.append(FrequencyAnalysis(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7]))
+    return jsonify(data)
+
+
+@app.route('/size-analysis', methods=['GET'])
+def get_size_analysis():
+    min_date = request.args.get('min_date')
+    max_date = request.args.get('max_date')
+    query = "SELECT * FROM sizeanalysis"
+    if min_date is None and max_date is None:
+        query += ";"
+    elif min_date is None:
+        query += " WHERE dataday <= '{0}';".format(max_date)
+    elif max_date is None:
+        query += " WHERE dataday >= '{0}';".format(min_date)
+    else:
+        query += " WHERE dataday >= '{0}' AND dataday <= '{1}';".format(min_date, max_date)
+
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    data = []
+    for row in rows:
+        data.append(SizeAnalysis(row[0], row[1], row[2], row[3]))
+    return jsonify(data)
+
+
+@app.route('/protocol-analysis', methods=['GET'])
+def get_protocol_analysis():
+    min_date = request.args.get('min_date')
+    max_date = request.args.get('max_date')
+    query = "SELECT * FROM protocolanalysis"
+    if min_date is None and max_date is None:
+        query += ";"
+    elif min_date is None:
+        query += " WHERE dataday <= '{0}';".format(max_date)
+    elif max_date is None:
+        query += " WHERE dataday >= '{0}';".format(min_date)
+    else:
+        query += " WHERE dataday >= '{0}' AND dataday <= '{1}';".format(min_date, max_date)
+
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    data = []
+    for row in rows:
+        data.append(ProtocolAnalysis(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10], row[11], row[12], row[13], row[14], row[15], row[16], row[17], row[18], row[19], row[20], row[21], row[22], row[23], row[24], row[25], row[26], row[27], row[28], row[29], row[30], row[31]))
     return jsonify(data)
 
 
