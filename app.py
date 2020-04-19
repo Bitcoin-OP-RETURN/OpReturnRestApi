@@ -2,15 +2,72 @@ from binascii import hexlify
 import config as cfg
 from flask import Flask, request, jsonify, Response
 from flask.json import JSONEncoder
-from flask_sqlalchemy import SQLAlchemy, Pagination, abort
-from sqlalchemy import and_, or_
-import sqlalchemy
-from flask_marshmallow import Marshmallow
 import pyodbc
 
 
+class FrequencyAnalysis:
+    def __init__(self, internal_id, dataday, nulldata, p2pk, p2pkh, p2ms, p2sh, unknowntype):
+        self.internal_id = internal_id
+        self.dataday = dataday
+        self.nulldata = nulldata
+        self.p2pk = p2pk
+        self.p2pkh = p2pkh
+        self.p2ms = p2ms
+        self.p2sh = p2sh
+        self.unknowntype = unknowntype
+
+
+class SizeAnalysis:
+    def __init__(self, internal_id, dataday, avgsize, outputs):
+        self.internal_id = internal_id
+        self.dataday = dataday
+        self.avgsize = avgsize
+        self.outputs = outputs
+
+
+class ProtocolAnalysis:
+    def __init__(self, internal_id, dataday, ascribe, bitproof, blockaibindedpixsy, blocksign, blockstoreblockstack,
+                 chainpoint,
+                 coinspark, colu, counterparty, counterpartytest, cryptocopyright, diploma, emptytx, eternitywall,
+                 factom, lapreuve, monegraph, omni, openassets, openchain, originalmy, proofofexistence, provebit,
+                 remembr, smartbit, stampd, stampery, universityofnicosia, unknownprotocol, veriblock):
+        self.internal_id = internal_id
+        self.dataday = dataday
+        self.ascribe = ascribe
+        self.bitproof = bitproof
+        self.blockaibindedpixsy = blockaibindedpixsy
+        self.blocksign = blocksign
+        self.blockstoreblockstack = blockstoreblockstack
+        self.chainpoint = chainpoint
+        self.coinspark = coinspark
+        self.colu = colu
+        self.counterparty = counterparty
+        self.counterpartytest = counterpartytest
+        self.cryptocopyright = cryptocopyright
+        self.diploma = diploma
+        self.emptytx = emptytx
+        self.eternitywall = eternitywall
+        self.factom = factom
+        self.lapreuve = lapreuve
+        self.monegraph = monegraph
+        self.omni = omni
+        self.openassets = openassets
+        self.openchain = openchain
+        self.originalmy = originalmy
+        self.proofofexistence = proofofexistence
+        self.provebit = provebit
+        self.remembr = remembr
+        self.smartbit = smartbit
+        self.stampd = stampd
+        self.stampery = stampery
+        self.universityofnicosia = universityofnicosia
+        self.unknownprotocol = unknownprotocol
+        self.veriblock = veriblock
+
+
 class TxOutput:
-    def __init__(self, internal_id, txhash, blocktime, blockhash, outvalue, outtype, outasm, outhex, protocol, fileheader):
+    def __init__(self, internal_id, txhash, blocktime, blockhash, outvalue, outtype, outasm, outhex, protocol,
+                 fileheader):
         self.internal_id = internal_id,
         self.txhash = txhash
         self.blocktime = blocktime
@@ -38,6 +95,59 @@ class MyJSONEncoder(JSONEncoder):
                 'protocol': obj.protocol,
                 'fileheader': obj.fileheader
             }
+        elif isinstance(obj, FrequencyAnalysis):
+            return {
+                'id': obj.internal_id,
+                'dataday': str(obj.dataday),
+                'nulldata': obj.nulldata,
+                'p2pk': obj.p2pk,
+                'p2pkh': obj.p2pkh,
+                'p2ms': obj.p2ms,
+                'p2sh': obj.p2sh,
+                'unknowntype': obj.unknowntype
+            }
+        elif isinstance(obj, SizeAnalysis):
+            return {
+                'id': obj.internal_id,
+                'dataday': obj.dataday,
+                'avgsize': obj.avgsize,
+                'outputs': obj.outputs
+            }
+        elif isinstance(obj, ProtocolAnalysis):
+            return {
+                'id': obj.internal_id,
+                'dataday': obj.dataday,
+                'ascribe': obj.ascribe,
+                'bitproof': obj.bitproof,
+                'blockaibindedpixsy': obj.blockaibindedpixsy,
+                'blocksign': obj.blocksign,
+                'blockstoreblockstack': obj.blockstoreblockstack,
+                'chainpoint': obj.chainpoint,
+                'coinspark': obj.coinspark,
+                'colu': obj.colu,
+                'counterparty': obj.counterparty,
+                'counterpartytest': obj.counterpartytest,
+                'cryptocopyright': obj.cryptocopyright,
+                'diploma': obj.diploma,
+                'emptytx': obj.emptytx,
+                'eternitywall': obj.eternitywall,
+                'factom': obj.factom,
+                'lapreuve': obj.lapreuve,
+                'monegraph': obj.monegraph,
+                'omni': obj.omni,
+                'openassets': obj.openassets,
+                'openchain': obj.openchain,
+                'originalmy': obj.originalmy,
+                'proofofexistence': obj.proofofexistence,
+                'provebit': obj.provebit,
+                'remembr': obj.remembr,
+                'smartbit': obj.smartbit,
+                'stampd': obj.stampd,
+                'stampery': obj.stampery,
+                'universityofnicosia': obj.universityofnicosia,
+                'unknownprotocol': obj.unknownprotocol,
+                'veriblock': obj.veriblock,
+            }
 
 
 # Initialize app
@@ -51,9 +161,31 @@ database.setencoding(encoding='utf-8')
 cursor = database.cursor()
 
 
+@app.route('/frequency-analysis', methods=['GET'])
+def get_frequency_analysis():
+    min_date = request.args.get('min_date')
+    max_date = request.args.get('max_date')
+    query = "SELECT * FROM frequencyanalysis"
+    if min_date is None and max_date is None:
+        query += ";"
+    elif min_date is None:
+        query += " WHERE dataday <= '{0}';".format(max_date)
+    elif max_date is None:
+        query += " WHERE dataday >= '{0}';".format(min_date)
+    else:
+        query += " WHERE dataday >= '{0}' AND dataday <= '{1}';".format(min_date, max_date)
+
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    data = []
+    for row in rows:
+        data.append(FrequencyAnalysis(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7]))
+    return jsonify(data)
+
+
 @app.route('/test', methods=['GET'])
 def get_test():
-    cursor.execute('SELECT TOP(10) * FROM transactionoutputs where outhex like \'%74657374%\' order by id desc')
+    cursor.execute("SELECT TOP(10) * FROM transactionoutputs where outhex like '%74657374%' order by id desc")
     rows = cursor.fetchall()
     data = []
     for row in rows:
