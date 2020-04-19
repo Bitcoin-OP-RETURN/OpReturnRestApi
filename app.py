@@ -316,6 +316,54 @@ def get_tx_outputs_search():
     return jsonify(data)
 
 
+@app.route('/tx-outputs/txhash', methods=['GET'])
+def get_tx_output_by_hash():
+    txhash = request.args.get('hash')
+    page = request.args.get('page')
+
+    query = "SELECT * FROM transactionoutputs"
+    if txhash is None:
+        return "Provide a transaction hash", 400
+    elif len(txhash) != 64:
+        return "Provide a valid transaction hash", 400
+    else:
+        if page is None:
+            query += " WHERE txhash = '{0}' ORDER BY id ASC OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY;".format(txhash)
+        else:
+            query += " WHERE txhash = '{0}' ORDER BY id ASC OFFSET {1} ROWS FETCH NEXT 10 ROWS ONLY;".format(txhash, str((int(page) - 1) * 10 if page is not None else 0))
+
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        data = []
+        for row in rows:
+            data.append(TxOutput(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9]))
+        return jsonify(data)
+
+
+@app.route('/tx-outputs/blockhash', methods=['GET'])
+def get_tx_output_by_blockhash():
+    blockhash = request.args.get('hash')
+    page = request.args.get('page')
+
+    query = "SELECT * FROM transactionoutputs"
+    if blockhash is None:
+        return "Provide a block hash", 400
+    elif len(blockhash) != 64:
+        return "Provide a valid block hash", 400
+    else:
+        if page is None:
+            query += " WHERE blockhash = '{0}' ORDER BY id ASC OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY;".format(blockhash)
+        else:
+            query += " WHERE blockhash = '{0}' ORDER BY id ASC OFFSET {1} ROWS FETCH NEXT 10 ROWS ONLY;".format(blockhash, str((int(page) - 1) * 10 if page is not None else 0))
+
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        data = []
+        for row in rows:
+            data.append(TxOutput(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9]))
+        return jsonify(data)
+
+
 def encoded_to_hex(input_string):
     hex_string = hexlify(input_string.encode())
     return hex_string.decode()
