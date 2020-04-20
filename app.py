@@ -3,7 +3,7 @@ import config as cfg
 from flask import Flask, request, jsonify, Response
 from flask.json import JSONEncoder
 import pyodbc
-
+import os
 
 class FrequencyAnalysis:
     def __init__(self, internal_id, dataday, nulldata, p2pk, p2pkh, p2ms, p2sh, unknowntype):
@@ -155,7 +155,9 @@ app = Flask(__name__)
 app.json_encoder = MyJSONEncoder
 
 database = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=' + cfg.db['server'] + ';DATABASE=' +
-                          cfg.db['database'] + ';UID=' + cfg.db['username'] + ';PWD=' + cfg.db['password'], autocommit=True)
+                          cfg.db['database'] + ';UID=' + cfg.db['username'] + ';PWD=' + cfg.db['password'] +
+                          ";MultipleActiveResultSets=True" +
+                          (";Trusted_Connection=Yes" if os.name == 'nt' else ""), autocommit=True)
 database.setencoding(encoding='utf-8')
 cursor = database.cursor()
 
