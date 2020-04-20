@@ -302,9 +302,9 @@ def get_tx_outputs_search():
             else:
                 added_at_least_one = True
             if search_format is not None and search_format == 'encoded':
-                query += " outhex LIKE '%{0}%'".format(encoded_to_hex(search_term))
+                query += " CHARINDEX('{0}' COLLATE Latin1_General_BIN, outhex COLLATE Latin1_General_BIN) > 0".format(encoded_to_hex(search_term))
             else:
-                query += " outhex LIKE '%{0}%'".format(search_term)
+                query += " CHARINDEX('{0}' COLLATE Latin1_General_BIN, outhex COLLATE Latin1_General_BIN) > 0".format(search_term)
 
     query += " ORDER BY id {0}".format(sort if sort is not None else "ASC")
     query += " OFFSET " + str((int(page) - 1) * 10 if page is not None else 0) + " ROWS FETCH NEXT 10 ROWS ONLY;"
