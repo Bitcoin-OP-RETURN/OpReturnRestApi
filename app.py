@@ -5,6 +5,7 @@ from flask.json import JSONEncoder
 import pyodbc
 import os
 
+
 class FrequencyAnalysis:
     def __init__(self, internal_id, dataday, nulldata, p2pk, p2pkh, p2ms, p2sh, unknowntype):
         self.internal_id = internal_id
@@ -254,8 +255,8 @@ def get_tx_outputs_search():
     protocols = [x.strip() for x in protocol.split(',')] if protocol is not None else None
     fileheaders = [x.strip() for x in fileheader.split(',')] if fileheader is not None else None
 
-    query = "SELECT * FROM transactionoutputs"
     if search_term is not None or min_time is not None or max_time is not None or protocol is not None or fileheader is not None:
+        query = "SELECT [Id],[TxHash],[Blocktime],[Blockhash],[OutValue],[OutType],[OutAsm],[OutHex],[Protocol],[FileHeader] FROM (SELECT ROW_NUMBER() over (ORDER BY id {0}) AS RowNum, * FROM transactionoutputs".format(sort if sort is not None else "ASC")
         query += " WHERE"
         added_at_least_one = False
         if min_time is not None and int(min_time) >= 1230768000:
@@ -302,12 +303,15 @@ def get_tx_outputs_search():
             else:
                 added_at_least_one = True
             if search_format is not None and search_format == 'encoded':
-                query += " CHARINDEX('{0}' COLLATE Latin1_General_BIN, outhex COLLATE Latin1_General_BIN) > 0".format(encoded_to_hex(search_term))
+                query += " outascii LIKE '%{0}%'".format(search_term)
             else:
                 query += " CHARINDEX('{0}' COLLATE Latin1_General_BIN, outhex COLLATE Latin1_General_BIN) > 0".format(search_term)
 
-    query += " ORDER BY id {0}".format(sort if sort is not None else "ASC")
-    query += " OFFSET " + str((int(page) - 1) * 10 if page is not None else 0) + " ROWS FETCH NEXT 10 ROWS ONLY;"
+        query += ") AS RowConstrainedResult WHERE RowNum >= {0} AND RowNum <= {1} ORDER BY RowNum;".format("1" if page == "1" else str((int(page) - 1) * 10 + 1), str(int(page) * 10))
+    else:
+        query = "SELECT * FROM transactionoutputs"
+        query += " ORDER BY id {0}".format(sort if sort is not None else "ASC")
+        query += " OFFSET " + str((int(page) - 1) * 10 if page is not None else 0) + " ROWS FETCH NEXT 10 ROWS ONLY;"
 
     cursor.execute(query)
     rows = cursor.fetchall()
