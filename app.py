@@ -370,6 +370,17 @@ def get_tx_output_by_blockhash():
         return jsonify(data)
 
 
+@app.route('/tx-outputs/count', methods=['GET'])
+def get_output_count():
+    query = "SELECT COUNT(*) FROM transactionoutputs"
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    data = []
+    for row in rows:
+        data.append(row[0])
+    return jsonify(data)
+
+
 def encoded_to_hex(input_string):
     hex_string = hexlify(input_string.encode())
     return hex_string.decode()
