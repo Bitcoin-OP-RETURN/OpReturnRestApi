@@ -8,6 +8,7 @@ A REST API to query the PostgreSQL database created by the [BitcoinRpcMiner](htt
 - [Transaction Outputs Search](#transaction-outputs-search)
 - [Transaction Output by Hash](#transaction-output-by-hash)
 - [Transaction Outputs by Block](#transaction-outputs-by-block)
+- [Transaction Statistics](#statistics)
 - [Frequency Analysis](#frequency-analysis)
 - [Size Analysis](#size-analysis)
 - [Protocol Analysis](#protocol-analysis)
@@ -169,6 +170,28 @@ Retrieves transaction outputs based on search parameters.
     "txhash": "a7dc1a5949d0bcbbf6a5a461dc970f1c3764ee083c0ed2fd592a6e981c6b2dad"
   }
 ]
+```
+
+## Statistics
+
+**URL:** `/tx-outputs/stats`
+
+**Method:** `GET`
+
+**Authentication required:** No
+
+**Success Code:** `200 OK`
+
+**Content example:**
+
+```json
+{
+    "last_output_time": 1522792750,
+    "recent_outputs": 21604,
+    "recent_size": 118,
+    "total_outputs": 4804263,
+    "total_size": 262928926
+}
 ```
 
 ## Frequency Analysis

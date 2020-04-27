@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify, Response
 from flask.json import JSONEncoder
 import pyodbc
 import os
+from datetime import datetime, timedelta
 
 
 class FrequencyAnalysis:
@@ -370,14 +371,37 @@ def get_tx_output_by_blockhash():
         return jsonify(data)
 
 
-@app.route('/tx-outputs/count', methods=['GET'])
+@app.route('/tx-outputs/stats', methods=['GET'])
 def get_output_count():
+    data = {}
+
     query = "SELECT COUNT(*) FROM transactionoutputs"
     cursor.execute(query)
-    rows = cursor.fetchall()
-    data = []
-    for row in rows:
-        data.append(row[0])
+    result = cursor.fetchone()
+    data["total_outputs"] = result[0]
+
+    time_24hrs_ago = datetime.now() - timedelta(days=1)
+
+    query = "SELECT COUNT(*) FROM transactionoutputs WHERE blocktime >= " + str(int(time_24hrs_ago.timestamp()))
+    cursor.execute(query)
+    recent_result = cursor.fetchone()
+    data["recent_outputs"] = recent_result[0]
+
+    query = "SELECT AVG(LEN(outhex)) FROM transactionoutputs WHERE blocktime >= " + str(int(time_24hrs_ago.timestamp()))
+    cursor.execute(query)
+    size_result = cursor.fetchone()
+    data["recent_size"] = size_result[0]
+
+    query = "SELECT TOP(1) blocktime FROM transactionoutputs ORDER BY ID desc"
+    cursor.execute(query)
+    last_result = cursor.fetchone()
+    data["last_output_time"] = last_result[0]
+
+    query = "SELECT SUM(LEN(outhex)) FROM transactionoutputs"
+    cursor.execute(query)
+    total_size_result = cursor.fetchone()
+    data["total_size"] = total_size_result[0]
+
     return jsonify(data)
 
 
