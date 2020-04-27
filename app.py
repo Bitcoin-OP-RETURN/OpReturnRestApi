@@ -382,15 +382,15 @@ def get_output_count():
 
     time_24hrs_ago = datetime.now() - timedelta(days=1)
 
-    query = "SELECT COUNT(*) FROM transactionoutputs WHERE blocktime >= " + str(int(time_24hrs_ago.timestamp()))
+    query = "SELECT TOP(1) nulldata FROM frequencyanalysis ORDER BY id DESC"
     cursor.execute(query)
     recent_result = cursor.fetchone()
     data["recent_outputs"] = recent_result[0]
 
-    query = "SELECT AVG(LEN(outhex)) FROM transactionoutputs WHERE blocktime >= " + str(int(time_24hrs_ago.timestamp()))
+    query = "SELECT TOP(1) avgsize, outputs FROM sizeanalysis ORDER BY id  DESC"
     cursor.execute(query)
     size_result = cursor.fetchone()
-    data["recent_size"] = size_result[0]
+    data["recent_size"] = size_result[0] / size_result[1] if size_result[0] != 0 and size_result[1] != 0 else 0
 
     query = "SELECT TOP(1) blocktime FROM transactionoutputs ORDER BY ID desc"
     cursor.execute(query)
