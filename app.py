@@ -375,7 +375,7 @@ def get_tx_output_by_blockhash():
 def get_output_count():
     data = {}
 
-    query = "SELECT COUNT(*) FROM transactionoutputs"
+    query = "SELECT sum([rows]) FROM sys.partitions WHERE object_id=object_id('transactionoutputs') AND index_id IN (0,1);"
     cursor.execute(query)
     result = cursor.fetchone()
     data["total_outputs"] = result[0]
@@ -397,7 +397,7 @@ def get_output_count():
     last_result = cursor.fetchone()
     data["last_output_time"] = last_result[0]
 
-    query = "SELECT SUM(LEN(outhex)) FROM transactionoutputs"
+    query = "SELECT SUM(CONVERT(bigint, avgsize)) FROM sizeanalysis;"
     cursor.execute(query)
     total_size_result = cursor.fetchone()
     data["total_size"] = total_size_result[0]
