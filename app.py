@@ -1,38 +1,15 @@
 from binascii import hexlify
 import config as cfg
 from flask import Flask, request, jsonify, Response
-from flask_sqlalchemy import SQLAlchemy, Pagination, abort
-from sqlalchemy import and_, or_
-import sqlalchemy
-from flask_marshmallow import Marshmallow
+from flask.json import JSONEncoder
 import pyodbc
-
-# Initialize app
-app = Flask(__name__)
-# Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mssql+pyodbc://' + cfg.db['username'] + ':' + cfg.db['password'] + '@' + cfg.db['server'] + ':' + cfg.db['port'] + '/' + cfg.db['database'] + '?driver=ODBC+DRIVER+17+for+SQL+Server'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# Initialize database
-db = SQLAlchemy(app)
-# Initialize marshmallow
-ma = Marshmallow(app)
-
-PAGE_SIZE = 10
-TOTAL_IN = 100_000_000_000
+import os
+from datetime import datetime, timedelta
 
 
-class FrequencyAnalysis(db.Model):
-    __tablename__ = 'frequencyanalysis'
-    id = db.Column(db.BigInteger, primary_key=True, nullable=False)
-    dataday = db.Column(db.Date, nullable=False)
-    nulldata = db.Column(db.Integer, nullable=False)
-    p2pk = db.Column(db.Integer, nullable=False)
-    p2pkh = db.Column(db.Integer, nullable=False)
-    p2ms = db.Column(db.Integer, nullable=False)
-    p2sh = db.Column(db.Integer, nullable=False)
-    unknowntype = db.Column(db.Integer, nullable=False)
-
-    def __init__(self, dataday, nulldata, p2pk, p2pkh, p2ms, p2sh, unknowntype):
+class FrequencyAnalysis:
+    def __init__(self, internal_id, dataday, nulldata, p2pk, p2pkh, p2ms, p2sh, unknowntype):
+        self.internal_id = internal_id
         self.dataday = dataday
         self.nulldata = nulldata
         self.p2pk = p2pk
@@ -42,68 +19,21 @@ class FrequencyAnalysis(db.Model):
         self.unknowntype = unknowntype
 
 
-class FrequencyAnalysisSchema(ma.Schema):
-    class Meta:
-        fields = ('id', 'dataday', 'nulldata', 'p2pk', 'p2pkh', 'p2ms', 'p2sh', 'unknowntype')
-
-
-class SizeAnalysis(db.Model):
-    __tablename__ = 'sizeanalysis'
-    id = db.Column(db.BigInteger, primary_key=True, nullable=False)
-    dataday = db.Column(db.Date, nullable=False)
-    avgsize = db.Column(db.Integer, nullable=False)
-    outputs = db.Column(db.Integer, nullable=False)
-
-    def __init__(self, dataday, avgsize, outputs):
+class SizeAnalysis:
+    def __init__(self, internal_id, dataday, avgsize, outputs):
+        self.internal_id = internal_id
         self.dataday = dataday
         self.avgsize = avgsize
         self.outputs = outputs
 
 
-class SizeAnalysisSchema(ma.Schema):
-    class Meta:
-        fields = ('id', 'dataday', 'avgsize', 'outputs')
-
-
-class ProtocolAnalysis(db.Model):
-    __tablename__ = 'protocolanalysis'
-    id = db.Column(db.BigInteger, primary_key=True, nullable=False)
-    dataday = db.Column(db.Date, nullable=False)
-    ascribe = db.Column(db.Integer, nullable=False)
-    bitproof = db.Column(db.Integer, nullable=False)
-    blockaibindedpixsy = db.Column(db.Integer, nullable=False)
-    blocksign = db.Column(db.Integer, nullable=False)
-    blockstoreblockstack = db.Column(db.Integer, nullable=False)
-    chainpoint = db.Column(db.Integer, nullable=False)
-    coinspark = db.Column(db.Integer, nullable=False)
-    colu = db.Column(db.Integer, nullable=False)
-    counterparty = db.Column(db.Integer, nullable=False)
-    counterpartytest = db.Column(db.Integer, nullable=False)
-    cryptocopyright = db.Column(db.Integer, nullable=False)
-    diploma = db.Column(db.Integer, nullable=False)
-    emptytx = db.Column(db.Integer, nullable=False)
-    eternitywall = db.Column(db.Integer, nullable=False)
-    factom = db.Column(db.Integer, nullable=False)
-    lapreuve = db.Column(db.Integer, nullable=False)
-    monegraph = db.Column(db.Integer, nullable=False)
-    omni = db.Column(db.Integer, nullable=False)
-    openassets = db.Column(db.Integer, nullable=False)
-    openchain = db.Column(db.Integer, nullable=False)
-    originalmy = db.Column(db.Integer, nullable=False)
-    proofofexistence = db.Column(db.Integer, nullable=False)
-    provebit = db.Column(db.Integer, nullable=False)
-    remembr = db.Column(db.Integer, nullable=False)
-    smartbit = db.Column(db.Integer, nullable=False)
-    stampd = db.Column(db.Integer, nullable=False)
-    stampery = db.Column(db.Integer, nullable=False)
-    universityofnicosia = db.Column(db.Integer, nullable=False)
-    unknownprotocol = db.Column(db.Integer, nullable=False)
-    veriblock = db.Column(db.Integer, nullable=False)
-
-    def __init__(self, dataday, ascribe, bitproof, blockaibindedpixsy, blocksign, blockstoreblockstack, chainpoint,
+class ProtocolAnalysis:
+    def __init__(self, internal_id, dataday, ascribe, bitproof, blockaibindedpixsy, blocksign, blockstoreblockstack,
+                 chainpoint,
                  coinspark, colu, counterparty, counterpartytest, cryptocopyright, diploma, emptytx, eternitywall,
                  factom, lapreuve, monegraph, omni, openassets, openchain, originalmy, proofofexistence, provebit,
                  remembr, smartbit, stampd, stampery, universityofnicosia, unknownprotocol, veriblock):
+        self.internal_id = internal_id
         self.dataday = dataday
         self.ascribe = ascribe
         self.bitproof = bitproof
@@ -137,29 +67,10 @@ class ProtocolAnalysis(db.Model):
         self.veriblock = veriblock
 
 
-class ProtocolAnalysisSchema(ma.Schema):
-    class Meta:
-        fields = ('id', 'dataday', 'ascribe', 'bitproof', 'blockaibindedpixsy', 'blocksign', 'blockstoreblockstack',
-                  'chainpoint', 'coinspark', 'colu', 'counterparty', 'counterpartytest', 'cryptocopyright', 'diploma',
-                  'emptytx', 'eternitywall', 'factom', 'lapreuve', 'monegraph', 'omni', 'openassets', 'openchain',
-                  'originalmy', 'proofofexistence', 'provebit', 'remembr', 'smartbit', 'stampd', 'stampery',
-                  'universityofnicosia', 'unknownprotocol', 'veriblock')
-
-
-class TransactionOutputs(db.Model):
-    __tablename__ = 'transactionoutputs'
-    id = db.Column(db.BigInteger, primary_key=True, nullable=False)
-    txhash = db.Column(db.CHAR(64), nullable=False)
-    blocktime = db.Column(db.BigInteger, nullable=False)
-    blockhash = db.Column(db.CHAR(64), nullable=False)
-    outvalue = db.Column(db.Float, nullable=False)
-    outtype = db.Column(db.VARCHAR, nullable=False)
-    outasm = db.Column(db.VARCHAR, nullable=False)
-    outhex = db.Column(db.VARCHAR, nullable=False)
-    protocol = db.Column(db.VARCHAR, nullable=True)
-    fileheader = db.Column(db.VARCHAR, nullable=True)
-
-    def __init__(self, txhash, blocktime, blockhash, outvalue, outtype, outasm, outhex, protocol, fileheader):
+class TxOutput:
+    def __init__(self, internal_id, txhash, blocktime, blockhash, outvalue, outtype, outasm, outhex, protocol,
+                 fileheader):
+        self.internal_id = internal_id,
         self.txhash = txhash
         self.blocktime = blocktime
         self.blockhash = blockhash
@@ -171,72 +82,164 @@ class TransactionOutputs(db.Model):
         self.fileheader = fileheader
 
 
-class TransactionOutputsSchema(ma.Schema):
-    class Meta:
-        fields = ('id', 'txhash', 'blocktime', 'blockhash', 'outvalue', 'outtype', 'outasm', 'outhex', 'protocol', 'fileheader')
+class MyJSONEncoder(JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, TxOutput):
+            return {
+                'id': obj.internal_id[0],
+                'txhash': obj.txhash,
+                'blocktime': obj.blocktime,
+                'blockhash': obj.blockhash,
+                'outvalue': obj.outvalue,
+                'outtype': obj.outtype,
+                'outasm': obj.outasm,
+                'outhex': obj.outhex,
+                'protocol': obj.protocol,
+                'fileheader': obj.fileheader
+            }
+        elif isinstance(obj, FrequencyAnalysis):
+            return {
+                'id': obj.internal_id,
+                'dataday': str(obj.dataday),
+                'nulldata': obj.nulldata,
+                'p2pk': obj.p2pk,
+                'p2pkh': obj.p2pkh,
+                'p2ms': obj.p2ms,
+                'p2sh': obj.p2sh,
+                'unknowntype': obj.unknowntype
+            }
+        elif isinstance(obj, SizeAnalysis):
+            return {
+                'id': obj.internal_id,
+                'dataday': str(obj.dataday),
+                'avgsize': obj.avgsize,
+                'outputs': obj.outputs
+            }
+        elif isinstance(obj, ProtocolAnalysis):
+            return {
+                'id': obj.internal_id,
+                'dataday': str(obj.dataday),
+                'ascribe': obj.ascribe,
+                'bitproof': obj.bitproof,
+                'blockaibindedpixsy': obj.blockaibindedpixsy,
+                'blocksign': obj.blocksign,
+                'blockstoreblockstack': obj.blockstoreblockstack,
+                'chainpoint': obj.chainpoint,
+                'coinspark': obj.coinspark,
+                'colu': obj.colu,
+                'counterparty': obj.counterparty,
+                'counterpartytest': obj.counterpartytest,
+                'cryptocopyright': obj.cryptocopyright,
+                'diploma': obj.diploma,
+                'emptytx': obj.emptytx,
+                'eternitywall': obj.eternitywall,
+                'factom': obj.factom,
+                'lapreuve': obj.lapreuve,
+                'monegraph': obj.monegraph,
+                'omni': obj.omni,
+                'openassets': obj.openassets,
+                'openchain': obj.openchain,
+                'originalmy': obj.originalmy,
+                'proofofexistence': obj.proofofexistence,
+                'provebit': obj.provebit,
+                'remembr': obj.remembr,
+                'smartbit': obj.smartbit,
+                'stampd': obj.stampd,
+                'stampery': obj.stampery,
+                'universityofnicosia': obj.universityofnicosia,
+                'unknownprotocol': obj.unknownprotocol,
+                'veriblock': obj.veriblock,
+            }
 
 
-freq_analysis_schema = FrequencyAnalysisSchema(many=True)
-size_analysis_schema = SizeAnalysisSchema(many=True)
-prot_analysis_schema = ProtocolAnalysisSchema(many=True)
-tx_outputs_schema = TransactionOutputsSchema(many=True)
-tx_output_schema = TransactionOutputsSchema(many=False)
+# Initialize app
+app = Flask(__name__)
+app.json_encoder = MyJSONEncoder
+
+database = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=' + cfg.db['server'] + ';DATABASE=' +
+                          cfg.db['database'] + ';UID=' + cfg.db['username'] + ';PWD=' + cfg.db['password'] +
+                          ";MultipleActiveResultSets=True" +
+                          (";Trusted_Connection=Yes" if os.name == 'nt' else ""), autocommit=True)
+database.setencoding(encoding='utf-8')
+cursor = database.cursor()
 
 
 @app.route('/frequency-analysis', methods=['GET'])
 def get_frequency_analysis():
     min_date = request.args.get('min_date')
     max_date = request.args.get('max_date')
+    query = "SELECT * FROM frequencyanalysis"
     if min_date is None and max_date is None:
-        days = FrequencyAnalysis.query.all()
+        query += ";"
     elif min_date is None:
-        days = FrequencyAnalysis.query.filter(FrequencyAnalysis.dataday <= max_date)
+        query += " WHERE dataday <= '{0}';".format(max_date)
     elif max_date is None:
-        days = FrequencyAnalysis.query.filter(FrequencyAnalysis.dataday >= min_date)
+        query += " WHERE dataday >= '{0}';".format(min_date)
     else:
-        days = FrequencyAnalysis.query.filter(FrequencyAnalysis.dataday.between(min_date, max_date))
-    return freq_analysis_schema.jsonify(days)
+        query += " WHERE dataday >= '{0}' AND dataday <= '{1}';".format(min_date, max_date)
+
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    data = []
+    for row in rows:
+        data.append(FrequencyAnalysis(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7]))
+    return jsonify(data)
 
 
 @app.route('/size-analysis', methods=['GET'])
 def get_size_analysis():
     min_date = request.args.get('min_date')
     max_date = request.args.get('max_date')
+    query = "SELECT * FROM sizeanalysis"
     if min_date is None and max_date is None:
-        days = SizeAnalysis.query.all()
+        query += ";"
     elif min_date is None:
-        days = SizeAnalysis.query.filter(SizeAnalysis.dataday <= max_date)
+        query += " WHERE dataday <= '{0}';".format(max_date)
     elif max_date is None:
-        days = SizeAnalysis.query.filter(SizeAnalysis.dataday >= min_date)
+        query += " WHERE dataday >= '{0}';".format(min_date)
     else:
-        days = SizeAnalysis.query.filter(SizeAnalysis.dataday.between(min_date, max_date))
-    return size_analysis_schema.jsonify(days)
+        query += " WHERE dataday >= '{0}' AND dataday <= '{1}';".format(min_date, max_date)
+
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    data = []
+    for row in rows:
+        data.append(SizeAnalysis(row[0], row[1], row[2], row[3]))
+    return jsonify(data)
 
 
 @app.route('/protocol-analysis', methods=['GET'])
 def get_protocol_analysis():
     min_date = request.args.get('min_date')
     max_date = request.args.get('max_date')
+    query = "SELECT * FROM protocolanalysis"
     if min_date is None and max_date is None:
-        days = ProtocolAnalysis.query.all()
+        query += ";"
     elif min_date is None:
-        days = ProtocolAnalysis.query.filter(ProtocolAnalysis.dataday <= max_date)
+        query += " WHERE dataday <= '{0}';".format(max_date)
     elif max_date is None:
-        days = ProtocolAnalysis.query.filter(ProtocolAnalysis.dataday >= min_date)
+        query += " WHERE dataday >= '{0}';".format(min_date)
     else:
-        days = ProtocolAnalysis.query.filter(ProtocolAnalysis.dataday.between(min_date, max_date))
-    return prot_analysis_schema.jsonify(days)
+        query += " WHERE dataday >= '{0}' AND dataday <= '{1}';".format(min_date, max_date)
+
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    data = []
+    for row in rows:
+        data.append(ProtocolAnalysis(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10], row[11], row[12], row[13], row[14], row[15], row[16], row[17], row[18], row[19], row[20], row[21], row[22], row[23], row[24], row[25], row[26], row[27], row[28], row[29], row[30], row[31]))
+    return jsonify(data)
 
 
 @app.route('/tx-outputs', methods=['GET'])
 def get_tx_outputs():
     page = request.args.get('page')
-    if page is None:
-        tx_outputs = TransactionOutputs.query.order_by(TransactionOutputs.id.desc()).limit(PAGE_SIZE).all()
-    else:
-        result = limited_paginate(TransactionOutputs.query.order_by(TransactionOutputs.id.desc()), int(page), PAGE_SIZE, error_out=True, total_in=TOTAL_IN)
-        tx_outputs = tx_outputs_schema.dump(result.items)
-    return tx_outputs_schema.jsonify(tx_outputs)
+    query = "SELECT * FROM transactionoutputs ORDER BY id DESC OFFSET {0} ROWS FETCH NEXT 10 ROWS ONLY;".format(int(page) * 10 if page is not None else 0)
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    data = []
+    for row in rows:
+        data.append(TxOutput(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9]))
+    return jsonify(data)
 
 
 @app.route('/tx-outputs/search', methods=['GET'])
@@ -253,16 +256,71 @@ def get_tx_outputs_search():
     protocols = [x.strip() for x in protocol.split(',')] if protocol is not None else None
     fileheaders = [x.strip() for x in fileheader.split(',')] if fileheader is not None else None
 
-    txs = tx_outputs_schema.dump(limited_paginate(
-        TransactionOutputs.query.filter(and_(
-            TransactionOutputs.blocktime >= min_time if min_time is not None and int(min_time) >= 1230768000 else sqlalchemy.true() if min_time is None else abort(400, 'Time can not be before 2009'),
-            TransactionOutputs.blocktime <= max_time if max_time is not None and (int(max_time) > int(min_time) if min_time is not None else True) else sqlalchemy.true() if max_time is None else abort(400, 'max_time has to be larger than min_time'),
-            or_(TransactionOutputs.protocol == prot for prot in protocols) if protocols is not None else sqlalchemy.true(),
-            or_(TransactionOutputs.fileheader == fh for fh in fileheaders) if fileheaders is not None else sqlalchemy.true(),
-            sqlalchemy.true() if search_term is None else abort(400, 'Search term must be at least 3 characters long') if len(search_term) < 3 else TransactionOutputs.outhex.like('%{}%'.format(search_term)) if search_format is None else TransactionOutputs.outhex.like('%{}%'.format(encoded_to_hex(search_term))) if search_format == 'encoded' else TransactionOutputs.outhex.like('%{}%'.format(search_term) if search_format == 'hex' else abort(400, 'Invalid search format (use hex or encoded)'))
-        )).order_by(TransactionOutputs.id if sort is None else TransactionOutputs.id.desc() if sort == 'desc' else TransactionOutputs.id), int(page) if page is not None else 1, PAGE_SIZE, error_out=True, total_in=TOTAL_IN).items)
+    if search_term is not None or min_time is not None or max_time is not None or protocol is not None or fileheader is not None:
+        query = "SELECT [Id],[TxHash],[Blocktime],[Blockhash],[OutValue],[OutType],[OutAsm],[OutHex],[Protocol],[FileHeader] FROM (SELECT ROW_NUMBER() over (ORDER BY id) AS RowNum, * FROM transactionoutputs"
+        query += " WHERE"
+        added_at_least_one = False
+        if min_time is not None and int(min_time) >= 1230768000:
+            if added_at_least_one:
+                query += " AND"
+            else:
+                added_at_least_one = True
+            query += " blocktime >= {0}".format(min_time)
 
-    return tx_outputs_schema.jsonify(txs)
+        if max_time is not None:
+            if added_at_least_one:
+                query += " AND"
+            else:
+                added_at_least_one = True
+            query += " blocktime <= {0}".format(max_time)
+
+        if protocol is not None:
+            if added_at_least_one:
+                query += " AND"
+            else:
+                added_at_least_one = True
+            query += " ("
+            for i, prot in enumerate(protocols):
+                if i > 0:
+                    query += " or "
+                query += "protocol = '{0}'".format(prot)
+            query += ")"
+
+        if fileheader is not None:
+            if added_at_least_one:
+                query += " AND"
+            else:
+                added_at_least_one = True
+            query += " ("
+            for i, fh in enumerate(fileheaders):
+                if i > 0:
+                    query += " or "
+                query += "fileheader = '{0}'".format(fh)
+            query += ")"
+
+        if search_term is not None and len(search_term) >= 3:
+            if added_at_least_one:
+                query += " AND"
+            else:
+                added_at_least_one = True
+            if search_format is not None and search_format == 'encoded':
+                query += " outascii LIKE '%{0}%'".format(search_term)
+            else:
+                query += " CHARINDEX('{0}' COLLATE Latin1_General_BIN, outhex COLLATE Latin1_General_BIN) > 0".format(search_term)
+
+        query += ") AS RowConstrainedResult"
+        query += " ORDER BY RowNum {0} OFFSET {1} ROWS FETCH NEXT 10 ROWS ONLY;".format(sort if sort is not None else "ASC", str((int(page) - 1) * 10 if page is not None else 0))
+    else:
+        query = "SELECT [Id],[TxHash],[Blocktime],[Blockhash],[OutValue],[OutType],[OutAsm],[OutHex],[Protocol],[FileHeader] FROM transactionoutputs"
+        query += " ORDER BY id {0}".format(sort if sort is not None else "ASC")
+        query += " OFFSET " + str((int(page) - 1) * 10 if page is not None else 0) + " ROWS FETCH NEXT 10 ROWS ONLY;"
+
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    data = []
+    for row in rows:
+        data.append(TxOutput(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9]))
+    return jsonify(data)
 
 
 @app.route('/tx-outputs/txhash', methods=['GET'])
@@ -270,95 +328,81 @@ def get_tx_output_by_hash():
     txhash = request.args.get('hash')
     page = request.args.get('page')
 
+    query = "SELECT * FROM transactionoutputs"
     if txhash is None:
-        abort(400, 'Provide a transaction hash')
+        return "Provide a transaction hash", 400
     elif len(txhash) != 64:
-        abort(400, 'Provide a valid transaction hash')
+        return "Provide a valid transaction hash", 400
     else:
         if page is None:
-            txs = TransactionOutputs.query.filter(TransactionOutputs.txhash == txhash).order_by(TransactionOutputs.id.asc()).limit(PAGE_SIZE).all()
+            query += " WHERE txhash = '{0}' ORDER BY id ASC OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY;".format(txhash)
         else:
-            txs = tx_outputs_schema.dump(limited_paginate(
-                TransactionOutputs.query.filter(TransactionOutputs.txhash == txhash).order_by(TransactionOutputs.id.asc()), int(page), PAGE_SIZE, error_out=True, total_in=TOTAL_IN).items)
-    return tx_outputs_schema.jsonify(txs)
+            query += " WHERE txhash = '{0}' ORDER BY id ASC OFFSET {1} ROWS FETCH NEXT 10 ROWS ONLY;".format(txhash, str((int(page) - 1) * 10 if page is not None else 0))
+
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        data = []
+        for row in rows:
+            data.append(TxOutput(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9]))
+        return jsonify(data)
 
 
 @app.route('/tx-outputs/blockhash', methods=['GET'])
-def get_tx_outputs_by_blockhash():
+def get_tx_output_by_blockhash():
     blockhash = request.args.get('hash')
     page = request.args.get('page')
 
+    query = "SELECT * FROM transactionoutputs"
     if blockhash is None:
-        abort(400, 'Provide a block hash')
+        return "Provide a block hash", 400
     elif len(blockhash) != 64:
-        abort(400, 'Provide a valid block hash')
+        return "Provide a valid block hash", 400
     else:
         if page is None:
-            txs = TransactionOutputs.query.filter(TransactionOutputs.blockhash == blockhash).order_by(TransactionOutputs.id.asc()).limit(PAGE_SIZE).all()
+            query += " WHERE blockhash = '{0}' ORDER BY id ASC OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY;".format(blockhash)
         else:
-            txs = tx_outputs_schema.dump(limited_paginate(
-                TransactionOutputs.query.filter(TransactionOutputs.blockhash == blockhash).order_by(TransactionOutputs.id.asc()), int(page), PAGE_SIZE, error_out=True, total_in=TOTAL_IN).items)
-    return tx_outputs_schema.jsonify(txs)
+            query += " WHERE blockhash = '{0}' ORDER BY id ASC OFFSET {1} ROWS FETCH NEXT 10 ROWS ONLY;".format(blockhash, str((int(page) - 1) * 10 if page is not None else 0))
+
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        data = []
+        for row in rows:
+            data.append(TxOutput(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9]))
+        return jsonify(data)
 
 
-# https://github.com/pallets/flask-sqlalchemy/issues/518#issuecomment-322379524
-def limited_paginate(query_in, page=None, per_page=None, error_out=True, total_in=None):
-    """Returns ``per_page`` items from page ``page``.
-    If no items are found and ``page`` is greater than 1, or if page is
-    less than 1, it aborts with 404.
-    This behavior can be disabled by passing ``error_out=False``.
-    If ``page`` or ``per_page`` are ``None``, they will be retrieved from
-    the request query.
-    If the values are not ints and ``error_out`` is ``True``, it aborts
-    with 404.
-    If there is no request or they aren't in the query, they default to 1
-    and 20 respectively.
-    Returns a :class:`Pagination` object.
-    """
+@app.route('/tx-outputs/stats', methods=['GET'])
+def get_output_count():
+    data = {}
 
-    if request:
-        if page is None:
-            try:
-                page = int(request.args.get('page', 1))
-            except (TypeError, ValueError):
-                if error_out:
-                    abort(404)
+    query = "SELECT sum([rows]) FROM sys.partitions WHERE object_id=object_id('transactionoutputs') AND index_id IN (0,1);"
+    cursor.execute(query)
+    result = cursor.fetchone()
+    data["total_outputs"] = result[0]
 
-                page = 1
+    time_24hrs_ago = datetime.now() - timedelta(days=1)
 
-        if per_page is None:
-            try:
-                per_page = int(request.args.get('per_page', PAGE_SIZE))
-            except (TypeError, ValueError):
-                if error_out:
-                    abort(404)
+    query = "SELECT TOP(1) nulldata FROM frequencyanalysis ORDER BY id DESC"
+    cursor.execute(query)
+    recent_result = cursor.fetchone()
+    data["recent_outputs"] = recent_result[0]
 
-                per_page = PAGE_SIZE
-    else:
-        if page is None:
-            page = 1
+    query = "SELECT TOP(1) avgsize, outputs FROM sizeanalysis ORDER BY id  DESC"
+    cursor.execute(query)
+    size_result = cursor.fetchone()
+    data["recent_size"] = size_result[0] / size_result[1] if size_result[0] != 0 and size_result[1] != 0 else 0
 
-        if per_page is None:
-            per_page = PAGE_SIZE
+    query = "SELECT TOP(1) blocktime FROM transactionoutputs ORDER BY ID desc"
+    cursor.execute(query)
+    last_result = cursor.fetchone()
+    data["last_output_time"] = last_result[0]
 
-    if error_out and page < 1:
-        abort(404)
+    query = "SELECT SUM(CONVERT(bigint, avgsize)) FROM sizeanalysis;"
+    cursor.execute(query)
+    total_size_result = cursor.fetchone()
+    data["total_size"] = total_size_result[0]
 
-    items = query_in.limit(per_page).offset((page - 1) * per_page).all()
-
-    if not items and page != 1 and error_out:
-        abort(404)
-
-    # No need to count if we're on the first page and there are fewer
-    # items than we expected.
-    if page == 1 and len(items) < per_page:
-        total = len(items)
-    elif total_in:
-        total = total_in
-    else:
-        total = query_in.order_by(None).count()
-
-    return Pagination(query_in, page, per_page, total, items)
+    return jsonify(data)
 
 
 def encoded_to_hex(input_string):
