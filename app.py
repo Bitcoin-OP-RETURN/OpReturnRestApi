@@ -309,7 +309,7 @@ def get_tx_outputs_search():
             else:
                 added_at_least_one = True
             if search_format is not None and search_format == 'encoded':
-                query += " outascii LIKE '%{0}%'".format(search_term)
+                query += " FREETEXT(outascii, '{0}')".format(search_term)
             else:
                 query += " CHARINDEX('{0}' COLLATE Latin1_General_BIN, outhex COLLATE Latin1_General_BIN) > 0".format(search_term)
 
