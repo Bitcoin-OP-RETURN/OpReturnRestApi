@@ -256,8 +256,13 @@ def get_tx_outputs_search():
     protocols = [x.strip() for x in protocol.split(',')] if protocol is not None else None
     fileheaders = [x.strip() for x in fileheader.split(',')] if fileheader is not None else None
 
+    only_dates = False
+    if (min_time is not None or max_time is not None) and search_term is None and protocol is None and fileheader is None:
+        only_dates = True
+
     if search_term is not None or min_time is not None or max_time is not None or protocol is not None or fileheader is not None:
-        query = "SELECT [Id],[TxHash],[Blocktime],[Blockhash],[OutValue],[OutType],[OutAsm],[OutHex],[Protocol],[FileHeader] FROM (SELECT ROW_NUMBER() over (ORDER BY id) AS RowNum, * FROM transactionoutputs"
+        query = "SELECT [Id],[TxHash],[Blocktime],[Blockhash],[OutValue],[OutType],[OutAsm],[OutHex],[Protocol],[FileHeader] " \
+                "FROM (SELECT ROW_NUMBER() over (ORDER BY id {0}) AS RowNum, * FROM transactionoutputs".format(sort if only_dates else "ASC")
         query += " WHERE"
         added_at_least_one = False
         if min_time is not None and int(min_time) >= 1230768000:
@@ -312,7 +317,7 @@ def get_tx_outputs_search():
         query += " ORDER BY RowNum {0} OFFSET {1} ROWS FETCH NEXT 10 ROWS ONLY;".format(sort if sort is not None else "ASC", str((int(page) - 1) * 10 if page is not None else 0))
     else:
         query = "SELECT [Id],[TxHash],[Blocktime],[Blockhash],[OutValue],[OutType],[OutAsm],[OutHex],[Protocol],[FileHeader] FROM transactionoutputs"
-        query += " ORDER BY id {0}".format(sort if sort is not None else "ASC")
+        query += " ORDER BY id {0}".format(sort if sort is not None and not only_dates else "ASC")
         query += " OFFSET " + str((int(page) - 1) * 10 if page is not None else 0) + " ROWS FETCH NEXT 10 ROWS ONLY;"
 
     cursor.execute(query)
