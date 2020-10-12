@@ -2,6 +2,7 @@ from binascii import hexlify
 import config as cfg
 from flask import Flask, request, jsonify, Response
 from flask.json import JSONEncoder
+from flask_cors import CORS, cross_origin
 import pyodbc
 import os
 from datetime import datetime, timedelta
@@ -155,6 +156,8 @@ class MyJSONEncoder(JSONEncoder):
 # Initialize app
 app = Flask(__name__)
 app.json_encoder = MyJSONEncoder
+cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 database = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=' + cfg.db['server'] + ';DATABASE=' +
                           cfg.db['database'] + ';UID=' + cfg.db['username'] + ';PWD=' + cfg.db['password'] +
@@ -165,6 +168,7 @@ cursor = database.cursor()
 
 
 @app.route('/frequency-analysis', methods=['GET'])
+@cross_origin()
 def get_frequency_analysis():
     min_date = request.args.get('min_date')
     max_date = request.args.get('max_date')
@@ -187,6 +191,7 @@ def get_frequency_analysis():
 
 
 @app.route('/size-analysis', methods=['GET'])
+@cross_origin()
 def get_size_analysis():
     min_date = request.args.get('min_date')
     max_date = request.args.get('max_date')
@@ -209,6 +214,7 @@ def get_size_analysis():
 
 
 @app.route('/protocol-analysis', methods=['GET'])
+@cross_origin()
 def get_protocol_analysis():
     min_date = request.args.get('min_date')
     max_date = request.args.get('max_date')
@@ -231,6 +237,7 @@ def get_protocol_analysis():
 
 
 @app.route('/tx-outputs', methods=['GET'])
+@cross_origin()
 def get_tx_outputs():
     page = request.args.get('page')
     query = "SELECT * FROM transactionoutputs ORDER BY id DESC OFFSET {0} ROWS FETCH NEXT 10 ROWS ONLY;".format(int(page) * 10 if page is not None else 0)
@@ -243,6 +250,7 @@ def get_tx_outputs():
 
 
 @app.route('/tx-outputs/search', methods=['GET'])
+@cross_origin()
 def get_tx_outputs_search():
     search_term = request.args.get('search')
     search_format = request.args.get('format')
@@ -329,6 +337,7 @@ def get_tx_outputs_search():
 
 
 @app.route('/tx-outputs/txhash', methods=['GET'])
+@cross_origin()
 def get_tx_output_by_hash():
     txhash = request.args.get('hash')
     page = request.args.get('page')
@@ -353,6 +362,7 @@ def get_tx_output_by_hash():
 
 
 @app.route('/tx-outputs/blockhash', methods=['GET'])
+@cross_origin()
 def get_tx_output_by_blockhash():
     blockhash = request.args.get('hash')
     page = request.args.get('page')
@@ -377,6 +387,7 @@ def get_tx_output_by_blockhash():
 
 
 @app.route('/tx-outputs/stats', methods=['GET'])
+@cross_origin()
 def get_output_count():
     data = {}
 
